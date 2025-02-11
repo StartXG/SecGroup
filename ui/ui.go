@@ -136,7 +136,8 @@ func CreateUI() {
 
 	resultContainer := container.NewVBox()
 
-	queryButton := widget.NewButton("查询", func() {
+	queryButton := widget.NewButton("查询", nil)
+	queryButton.OnTapped = func() {
 		aoac, _ := sg.NewAoac(akIDEntry.Text, akSecretEntry.Text)
 		sgItem := &sg.SGItem{}
 		permissions := sgItem.DescribeSecurityGroupAttribute(aoac, config.RegionID, config.SecurityGroupID)
@@ -169,7 +170,7 @@ func CreateUI() {
 		}
 		resultContainer.Refresh()
 		showDialog(w, "查询成功", "安全组规则已查询")
-	})
+	}
 
 	openButton := widget.NewButton("对当前IP一键开放", func() {
 		aoac, _ := sg.NewAoac(akIDEntry.Text, akSecretEntry.Text)
