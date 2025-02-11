@@ -45,10 +45,13 @@ func GetCurrentPublicIP() (string, error) {
 	return strings.TrimSpace(string(ip)), nil
 }
 
-func loadConfig(db *gorm.DB) Config {
+func loadConfig(db *gorm.DB) (Config, bool) {
 	var config Config
-	db.First(&config)
-	return config
+	result := db.First(&config)
+	if result.Error != nil {
+		return config, false
+	}
+	return config, true
 }
 
 func saveConfig(db *gorm.DB, config Config) {
@@ -74,12 +77,7 @@ func CreateUI() {
 	}
 	db.AutoMigrate(&Config{})
 
-	config := loadConfig(db)
-
-	if config.AccessKeyID == "" || config.AccessKeySecret == "" {
-		fmt.Println("AccessKeyID or AccessKeySecret is empty, exiting...")
-		return
-	}
+	config, configExists := loadConfig(db)
 
 	currentIP, err := GetCurrentPublicIP()
 	if err != nil {
@@ -87,25 +85,43 @@ func CreateUI() {
 	}
 
 	ipLabel := widget.NewLabel("我的当前IP: " + currentIP)
+	noteLabel := widget.NewLabel("地域和安全组的选择需要先填写ak_id和ak_secret并保存")
 	akIDEntry := widget.NewEntry()
 	akIDEntry.SetPlaceHolder("Access Key ID")
-	akIDEntry.SetText(config.AccessKeyID)
 	akSecretEntry := widget.NewEntry()
 	akSecretEntry.SetPlaceHolder("Access Key Secret")
-	akSecretEntry.SetText(config.AccessKeySecret)
 	portRangeEntry := widget.NewEntry()
 	portRangeEntry.SetPlaceHolder("Port Range [e.g.: 80/80]")
-	portRangeEntry.SetText(config.PortRange)
+
+	if config.AccessKeyID != "" && config.AccessKeySecret != "" {
+		noteLabel.Hide()
+	}
 
 	regionOptions := []string{}
 	regionMap := map[string]string{}
-	aoac, _ := sg.NewAoac(akIDEntry.Text, akSecretEntry.Text)
-	sgItem := &sg.SGItem{}
-	regions := sgItem.GetRegionId(aoac)
-	for _, region := range regions {
-		regionOptions = append(regionOptions, tea.StringValue(region.LocalName))
-		regionMap[tea.StringValue(region.LocalName)] = tea.StringValue(region.RegionId)
+	securityGroupOptions := []string{}
+	securityGroupMap := map[string]string{}
+
+	if configExists {
+		akIDEntry.SetText(config.AccessKeyID)
+		akSecretEntry.SetText(config.AccessKeySecret)
+		portRangeEntry.SetText(config.PortRange)
+
+		aoac, _ := sg.NewAoac(akIDEntry.Text, akSecretEntry.Text)
+		sgItem := &sg.SGItem{}
+		regions := sgItem.GetRegionId(aoac)
+		for _, region := range regions {
+			regionOptions = append(regionOptions, tea.StringValue(region.LocalName))
+			regionMap[tea.StringValue(region.LocalName)] = tea.StringValue(region.RegionId)
+		}
+		securityGroups := sgItem.DescribeSecurityGroups(aoac, config.RegionID)
+		for _, group := range securityGroups {
+			label := fmt.Sprintf("%s - %s", tea.StringValue(group.SecurityGroupId), tea.StringValue(group.Description))
+			securityGroupOptions = append(securityGroupOptions, label)
+			securityGroupMap[label] = tea.StringValue(group.SecurityGroupId)
+		}
 	}
+
 	regionIDSelect := widget.NewSelect(regionOptions, func(selected string) {
 		config.RegionID = regionMap[selected]
 	})
@@ -116,14 +132,6 @@ func CreateUI() {
 		}
 	}
 
-	securityGroupOptions := []string{}
-	securityGroupMap := map[string]string{}
-	securityGroups := sgItem.DescribeSecurityGroups(aoac, config.RegionID)
-	for _, group := range securityGroups {
-		label := fmt.Sprintf("%s - %s", tea.StringValue(group.SecurityGroupId), tea.StringValue(group.Description))
-		securityGroupOptions = append(securityGroupOptions, label)
-		securityGroupMap[label] = tea.StringValue(group.SecurityGroupId)
-	}
 	secGroupIDSelect := widget.NewSelect(securityGroupOptions, func(selected string) {
 		config.SecurityGroupID = securityGroupMap[selected]
 	})
@@ -138,6 +146,10 @@ func CreateUI() {
 
 	queryButton := widget.NewButton("查询", nil)
 	queryButton.OnTapped = func() {
+		if !configExists {
+			showDialog(w, "查询失败", "配置不存在，请先保存配置")
+			return
+		}
 		aoac, _ := sg.NewAoac(akIDEntry.Text, akSecretEntry.Text)
 		sgItem := &sg.SGItem{}
 		permissions := sgItem.DescribeSecurityGroupAttribute(aoac, config.RegionID, config.SecurityGroupID)
@@ -173,6 +185,10 @@ func CreateUI() {
 	}
 
 	openButton := widget.NewButton("对当前IP一键开放", func() {
+		if !configExists {
+			showDialog(w, "开放失败", "配置不存在，请先保存配置")
+			return
+		}
 		aoac, _ := sg.NewAoac(akIDEntry.Text, akSecretEntry.Text)
 		sgItem := &sg.SGItem{
 			Policy:       "Accept",
@@ -197,10 +213,14 @@ func CreateUI() {
 		}
 		saveConfig(db, config)
 		showDialog(w, "保存成功", "配置已保存")
+		if akIDEntry.Text != "" && akSecretEntry.Text != "" {
+			noteLabel.Hide()
+		}
 	})
 
 	content := container.NewVBox(
 		ipLabel,
+		noteLabel,
 		akIDEntry,
 		akSecretEntry,
 		regionIDSelect,
