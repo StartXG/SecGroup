@@ -236,6 +236,10 @@ func CreateUI() {
 			showDialog(w, "开放失败", "配置不存在，请先保存配置")
 			return
 		}
+		if portRangeEntry.Text == "" {
+			showDialog(w, "开放失败", "请先填写端口范围")
+			return
+		}
 		aoac, _ := sg.NewAoac(akIDEntry.Text, akSecretEntry.Text)
 		sgItem := &sg.SGItem{
 			Policy:       "Accept",
