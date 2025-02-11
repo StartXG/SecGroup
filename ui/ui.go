@@ -102,29 +102,79 @@ func CreateUI() {
 	securityGroupOptions := []string{}
 	securityGroupMap := map[string]string{}
 
-	if configExists {
-		akIDEntry.SetText(config.AccessKeyID)
-		akSecretEntry.SetText(config.AccessKeySecret)
-		portRangeEntry.SetText(config.PortRange)
+	regionIDSelect := widget.NewSelect(regionOptions, func(selected string) {
+		config.RegionID = regionMap[selected]
+	})
+	secGroupIDSelect := widget.NewSelect(securityGroupOptions, func(selected string) {
+		config.SecurityGroupID = securityGroupMap[selected]
+	})
 
+	refreshRegionButton := widget.NewButton("刷新地域", func() {
+		if akIDEntry.Text == "" || akSecretEntry.Text == "" {
+			showDialog(w, "刷新失败", "请先填写Access Key ID和Access Key Secret")
+			return
+		}
 		aoac, _ := sg.NewAoac(akIDEntry.Text, akSecretEntry.Text)
 		sgItem := &sg.SGItem{}
 		regions := sgItem.GetRegionId(aoac)
+		regionOptions = []string{}
+		regionMap = map[string]string{}
 		for _, region := range regions {
 			regionOptions = append(regionOptions, tea.StringValue(region.LocalName))
 			regionMap[tea.StringValue(region.LocalName)] = tea.StringValue(region.RegionId)
 		}
+		regionIDSelect.Options = regionOptions
+		regionIDSelect.Refresh()
+	})
+
+	refreshSecurityGroupButton := widget.NewButton("刷新安全组", func() {
+		if akIDEntry.Text == "" || akSecretEntry.Text == "" || config.RegionID == "" {
+			showDialog(w, "刷新失败", "请先填写Access Key ID、Access Key Secret，并选择地域")
+			return
+		}
+		aoac, _ := sg.NewAoac(akIDEntry.Text, akSecretEntry.Text)
+		sgItem := &sg.SGItem{}
 		securityGroups := sgItem.DescribeSecurityGroups(aoac, config.RegionID)
+		securityGroupOptions = []string{}
+		securityGroupMap = map[string]string{}
 		for _, group := range securityGroups {
 			label := fmt.Sprintf("%s - %s", tea.StringValue(group.SecurityGroupId), tea.StringValue(group.Description))
 			securityGroupOptions = append(securityGroupOptions, label)
 			securityGroupMap[label] = tea.StringValue(group.SecurityGroupId)
 		}
+		secGroupIDSelect.Options = securityGroupOptions
+		secGroupIDSelect.Refresh()
+	})
+
+	if configExists {
+		akIDEntry.SetText(config.AccessKeyID)
+		akSecretEntry.SetText(config.AccessKeySecret)
+		portRangeEntry.SetText(config.PortRange)
+
+		if config.AccessKeyID != "" && config.AccessKeySecret != "" {
+			aoac, _ := sg.NewAoac(akIDEntry.Text, akSecretEntry.Text)
+			sgItem := &sg.SGItem{}
+			regions := sgItem.GetRegionId(aoac)
+			for _, region := range regions {
+				regionOptions = append(regionOptions, tea.StringValue(region.LocalName))
+				regionMap[tea.StringValue(region.LocalName)] = tea.StringValue(region.RegionId)
+			}
+			regionIDSelect.Options = regionOptions
+			regionIDSelect.Refresh()
+
+			if config.RegionID != "" {
+				securityGroups := sgItem.DescribeSecurityGroups(aoac, config.RegionID)
+				for _, group := range securityGroups {
+					label := fmt.Sprintf("%s - %s", tea.StringValue(group.SecurityGroupId), tea.StringValue(group.Description))
+					securityGroupOptions = append(securityGroupOptions, label)
+					securityGroupMap[label] = tea.StringValue(group.SecurityGroupId)
+				}
+				secGroupIDSelect.Options = securityGroupOptions
+				secGroupIDSelect.Refresh()
+			}
+		}
 	}
 
-	regionIDSelect := widget.NewSelect(regionOptions, func(selected string) {
-		config.RegionID = regionMap[selected]
-	})
 	for localName, regionID := range regionMap {
 		if regionID == config.RegionID {
 			regionIDSelect.SetSelected(localName)
@@ -132,9 +182,6 @@ func CreateUI() {
 		}
 	}
 
-	secGroupIDSelect := widget.NewSelect(securityGroupOptions, func(selected string) {
-		config.SecurityGroupID = securityGroupMap[selected]
-	})
 	for label, groupID := range securityGroupMap {
 		if groupID == config.SecurityGroupID {
 			secGroupIDSelect.SetSelected(label)
@@ -223,8 +270,8 @@ func CreateUI() {
 		noteLabel,
 		akIDEntry,
 		akSecretEntry,
-		regionIDSelect,
-		secGroupIDSelect,
+		container.NewHBox(regionIDSelect, refreshRegionButton),
+		container.NewHBox(secGroupIDSelect, refreshSecurityGroupButton),
 		portRangeEntry,
 		queryButton,
 		openButton,
