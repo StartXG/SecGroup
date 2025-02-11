@@ -41,6 +41,20 @@ func (content *SGItem) GetRegionId(aoac *ecs20140526.Client) []*ecs20140526.Desc
 	return _res.Body.Regions.Region
 }
 
+func (content *SGItem) DescribeSecurityGroups(aoac *ecs20140526.Client, regionId string) []*ecs20140526.DescribeSecurityGroupsResponseBodySecurityGroupsSecurityGroup {
+	// 获取安全组
+	describeSecurityGroupsRequest := &ecs20140526.DescribeSecurityGroupsRequest{
+		RegionId: tea.String(regionId),
+	}
+	runtime := &util.RuntimeOptions{}
+	_res, _err := aoac.DescribeSecurityGroupsWithOptions(describeSecurityGroupsRequest, runtime)
+	if _err != nil {
+		fmt.Println(_err)
+		return nil
+	}
+	return _res.Body.SecurityGroups.SecurityGroup
+}
+
 func (content *SGItem) CreateSecurityGroupRule(aoac *ecs20140526.Client, regionId string, securityGroupId string) {
 	// 创建安全组规则
 	authorizeSecurityGroupRequest := &ecs20140526.AuthorizeSecurityGroupRequest{
