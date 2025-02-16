@@ -29,10 +29,10 @@ type Config struct {
 }
 
 func GetCurrentPublicIP() (string, error) {
-	resp, err := http.Get("https://api.ipify.org")
+	resp, err := http.Get("https://api.ipify.org?format=text")
 	if err != nil {
 		// 尝试备用服务
-		resp, err = http.Get("https://ifconfig.me")
+		resp, err = http.Get("https://ipv4.icanhazip.com")
 		if err != nil {
 			return "", err
 		}
