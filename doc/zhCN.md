@@ -14,7 +14,7 @@
 
 1. 克隆仓库：
     ```sh
-    git clone https://github.com/yourusername/SecGroupV2.git
+    git clone https://github.com/StartXG/SecGroup.git
     cd SecGroupV2
     ```
 
