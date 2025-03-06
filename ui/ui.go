@@ -92,6 +92,14 @@ func CreateUI() {
 	akSecretEntry.SetPlaceHolder("Access Key Secret")
 	portRangeEntry := widget.NewEntry()
 	portRangeEntry.SetPlaceHolder("Port Range [e.g.: 80/80]")
+	priorityEntry := widget.NewEntry()
+	priorityEntry.SetPlaceHolder("Priority")
+	priorityEntry.SetText("1")
+	descriptionEntry := widget.NewEntry()
+	descriptionEntry.SetPlaceHolder("Description")
+
+	protocolOptions := []string{"TCP", "UDP"}
+	protocolSelect := widget.NewSelect(protocolOptions, func(selected string) {})
 
 	if config.AccessKeyID != "" && config.AccessKeySecret != "" {
 		noteLabel.Hide()
@@ -243,11 +251,11 @@ func CreateUI() {
 		aoac, _ := sg.NewAoac(akIDEntry.Text, akSecretEntry.Text)
 		sgItem := &sg.SGItem{
 			Policy:       "Accept",
-			IpPortocol:   "TCP",
+			IpPortocol:   protocolSelect.Selected,
 			SourceCidrIp: currentIP + "/32",
 			PortRange:    portRangeEntry.Text,
-			Priority:     "1",
-			Description:  "Allow HTTP",
+			Priority:     priorityEntry.Text,
+			Description:  descriptionEntry.Text,
 		}
 		sgItem.CreateSecurityGroupRule(aoac, config.RegionID, config.SecurityGroupID)
 		showDialog(w, "开放成功", "当前IP已开放")
@@ -276,7 +284,10 @@ func CreateUI() {
 		akSecretEntry,
 		container.NewHBox(regionIDSelect, refreshRegionButton),
 		container.NewHBox(secGroupIDSelect, refreshSecurityGroupButton),
+		protocolSelect,
 		portRangeEntry,
+		priorityEntry,
+		descriptionEntry,
 		queryButton,
 		openButton,
 		saveButton,
