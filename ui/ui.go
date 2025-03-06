@@ -68,11 +68,11 @@ func showDialog(w fyne.Window, title, message string) {
 
 func CreateUI() {
 	a := app.New()
-	w := a.NewWindow("Security Group Manager")
+	w := a.NewWindow("安全组管理器")
 
 	db, err := gorm.Open(sqlite.Open("config.db"), &gorm.Config{})
 	if err != nil {
-		fmt.Println("failed to connect database")
+		fmt.Println("连接数据库失败")
 		return
 	}
 	db.AutoMigrate(&Config{})
@@ -81,7 +81,7 @@ func CreateUI() {
 
 	currentIP, err := GetCurrentPublicIP()
 	if err != nil {
-		currentIP = "Error getting IP"
+		currentIP = "获取IP失败"
 	}
 
 	ipLabel := widget.NewLabel("我的当前IP: " + currentIP)
@@ -91,12 +91,12 @@ func CreateUI() {
 	akSecretEntry := widget.NewEntry()
 	akSecretEntry.SetPlaceHolder("Access Key Secret")
 	portRangeEntry := widget.NewEntry()
-	portRangeEntry.SetPlaceHolder("Port Range [e.g.: 80/80]")
+	portRangeEntry.SetPlaceHolder("端口范围 [例如: 80/80]")
 	priorityEntry := widget.NewEntry()
-	priorityEntry.SetPlaceHolder("Priority")
+	priorityEntry.SetPlaceHolder("优先级")
 	priorityEntry.SetText("1")
 	descriptionEntry := widget.NewEntry()
-	descriptionEntry.SetPlaceHolder("Description")
+	descriptionEntry.SetPlaceHolder("描述")
 
 	protocolOptions := []string{"TCP", "UDP"}
 	protocolSelect := widget.NewSelect(protocolOptions, func(selected string) {})
@@ -280,13 +280,21 @@ func CreateUI() {
 	content := container.NewVBox(
 		ipLabel,
 		noteLabel,
+		widget.NewLabel("Access Key ID:"),
 		akIDEntry,
+		widget.NewLabel("Access Key Secret:"),
 		akSecretEntry,
+		widget.NewLabel("地域:"),
 		container.NewHBox(regionIDSelect, refreshRegionButton),
+		widget.NewLabel("安全组:"),
 		container.NewHBox(secGroupIDSelect, refreshSecurityGroupButton),
+		widget.NewLabel("协议:"),
 		protocolSelect,
+		widget.NewLabel("端口范围:"),
 		portRangeEntry,
+		widget.NewLabel("优先级:"),
 		priorityEntry,
+		widget.NewLabel("描述:"),
 		descriptionEntry,
 		queryButton,
 		openButton,
