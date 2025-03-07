@@ -14,7 +14,7 @@ This project is a Security Group Manager for Alibaba Cloud ECS. It allows you to
 
 1. Clone the repository:
     ```sh
-    git clone https://github.com/yourusername/SecGroupV2.git
+    git clone https://github.com/StartXG/SecGroup.git
     cd SecGroupV2
     ```
 
